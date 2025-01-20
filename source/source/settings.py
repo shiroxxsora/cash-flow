@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-zc!hn-x3x27t7$5+j_ri!$facr97r8j8=cus81#g*b#dpu%10)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -56,7 +56,7 @@ ROOT_URLCONF = 'source.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'cashflow' /'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <title>Движение денежной массы</title>
+    <style>
+        /* Ограничиваем высоту таблицы и добавляем скролл */
+        .table-container {
+            max-height: 800px; 
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid #dee2e6;
+        }
+
+        /* Делаем заголовок таблицы фиксированным */
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            background-color: #343a40;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <div class="container text-center">
+        <!-- Контейнер для скролабельной таблицы -->
+        <div class="table-container">
+            <h1>Данные о движении денежных средств</h1>
+
+            <!-- Кнопка для перехода на страницу редактирования категорий/подкатегорий/типов -->
+            <a href="/edit-page" class="btn btn-primary mb-3">Редактировать категории и подкатегории</a>
+
+            <table class="table table-bordered">
+
+                <!-- Заголовки для колонок -->
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('creation_time')">Дата</th>
+                        <th onclick="sortTable('status')">Статус</th>
+                        <th onclick="sortTable('type')">Тип</th>
+                        <th onclick="sortTable('category')">Категория</th>
+                        <th onclick="sortTable('undercats')">Подкатегории</th>
+                        <th onclick="sortTable('summ')">Сумма</th>
+                        <th onclick="sortTable('comment')">Комментарий</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="cashflow-table-body">
+
+                    <!-- Данные будут вставляться сюда -->
+
+                </tbody>
+            </table>
+
+            <!-- Кнопка для добавления новой записи -->
+            <button onclick="showAddForm()" class="btn btn-success mb-3">Форма добавления</button>
+        </div>
+    </div>
+
+    <script>
+        let cashflowsData = [];
+        let sortDirection = {  // Храним направление сортировки для каждого столбца
+            creation_time: 1,
+            category: 1,
+            undercats: 1,
+            type: 1,
+            summ: 1,
+            comment: 1
+        };
+
+        // Запрос к API
+        fetch('http://{{ request.get_host }}/api/v1/cashflows/')
+        .then(response => {
+            if (!response.ok) { 
+                throw new Error('Ошибка при получение ответа от сервера');
+            }
+            return response.json();  // Парсим JSON-ответ
+        })
+        .then(data => {
+            cashflowsData = data;
+            renderTable(cashflowsData);  // Рендерим таблицу с исходными данными
+        })
+        .catch(error => {
+            console.error('Ошибка при извлечение данных', error);
+        });
+
+        // Функция для отображения данных в таблице
+        function renderTable(data) {
+            const tableBody = document.getElementById('cashflow-table-body');
+            tableBody.innerHTML = '';  // Очищаем текущие строки таблицы
+
+            data.forEach(item => {
+                // Создание строки таблицы для каждого объекта данных
+                const row = document.createElement('tr');
+
+                row.innerHTML = `
+                    <td>${new Date(item.creation_time).toLocaleString()}</td>
+                    <td>${item.status.name}</td>
+                    <td>${item.type.name}</td>
+                    <td>${item.category.name}</td>
+                    <td>
+                    <!-- Список подкатегорий -->
+                        <ul>
+                            ${item.undercats_data.map(undercat => `<li>${undercat.name}</li>`).join('')}
+                        </ul>
+                    </td>
+                    <td>${item.summ}</td>
+                    <td>${item.comment}</td>
+                    <td>
+                        <button type="button" class="btn btn-primary" onclick="editRow(${item.id})">edit</button>
+                        <button type="button" class="btn btn-danger" onclick="removeRow(${item.id})">remove</button>
+                    </td>
+                `;
+
+                // Добавляем строку в тело таблицы
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Функция сортировки таблицы
+        function sortTable(column) {
+            // Переключаем направление сортировки для этого столбца
+            sortDirection[column] = -sortDirection[column];
+
+            const sortedData = [...cashflowsData];  // Копируем данные, чтобы не изменять оригинал
+            sortedData.sort((a, b) => {
+                let valA, valB;
+
+                // Для разных типов данных извлекаем нужное значение для сравнения
+                if (column === 'creation_time') {
+                    valA = new Date(a[column]);
+                    valB = new Date(b[column]);
+                } else if (column === 'summ') {
+                    valA = parseFloat(a[column]);
+                    valB = parseFloat(b[column]);
+                } else {
+                    valA = a[column].name;  // Для категории, подкатегории и типа
+                    valB = b[column].name;
+                }
+
+                // Сортировка по возрастанию или убыванию в зависимости от значения sortDirection
+                if (valA < valB) return -1 * sortDirection[column];
+                if (valA > valB) return 1 * sortDirection[column];
+                return 0;
+            });
+
+            renderTable(sortedData);  // Рендерим отсортированную таблицу
+        }
+
+        // Функция редактирования строки с выпадающими списками
+        function editRow(id) {
+            // Находим данные строки по id
+            const item = cashflowsData.find(item => item.id === id);
+            
+            if (!item) {
+                alert('Запись не найдена');
+                return;
+            }
+
+            // Получаем доступные данные через API
+            Promise.all([
+                fetch('http://{{ request.get_host }}/api/v1/statuses/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/types/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/categories/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/undercats/').then(res => res.json())  // Список подкатегорий
+            ])
+            .then(([statuses, types, categories, undercats]) => {
+                // Открываем форму для редактирования с выпадающими списками
+                const editFormHtml = `
+                    <div id="edit-form-container" class="container">
+                        <h2>Редактировать запись</h2>
+                        <form id="edit-form">
+                            <div class="mb-3">
+                                <label for="status_id" class="form-label">Статус</label>
+                                <select class="form-select" id="status_id" required>
+                                    ${statuses.map(status => `
+                                        <option value="${status.id}" ${status.id === item.status_id ? 'selected' : ''}>
+                                            ${status.name}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="type_id" class="form-label">Тип</label>
+                                <select class="form-select" id="type_id" required>
+                                    ${types.map(type => `
+                                        <option value="${type.id}" ${type.id === item.type_id ? 'selected' : ''}>
+                                            ${type.name}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="category_id" class="form-label">Категория</label>
+                                <select class="form-select" id="category_id" required>
+                                    ${categories.map(category => `
+                                        <option value="${category.id}" ${category.id === item.category_id ? 'selected' : ''}>
+                                            ${category.name}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="undercats" class="form-label">Подкатегории</label>
+                                <select class="form-select" id="undercats" multiple required>
+                                    ${undercats.filter(undercat => undercat.category_id === item.category_id).map(undercat => `
+                                        <option value="${undercat.id}" ${item.undercats_data.some(u => u.id === undercat.id) ? 'selected' : ''}>
+                                            ${undercat.name}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="summ" class="form-label">Сумма</label>
+                                <input type="number" class="form-control" id="summ" value="${item.summ}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="comment" class="form-label">Комментарий</label>
+                                <input type="text" class="form-control" id="comment" value="${item.comment}" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Отмена</button>
+                        </form>
+                    </div>
+                `;
+
+                // Вставляем форму в DOM
+                document.body.innerHTML += editFormHtml;
+
+                // Получаем элементы для категории и подкатегорий
+                const categorySelect = document.getElementById('category_id');
+                const undercatsSelect = document.getElementById('undercats');
+
+                // Обработчик изменения категории
+                categorySelect.addEventListener('change', function() {
+                    const selectedCategoryId = categorySelect.value;
+                    updateUndercatsList(selectedCategoryId, undercats);  // Обновляем список подкатегорий
+                });
+
+                // Функция обновления списка подкатегорий
+                function updateUndercatsList(selectedCategoryId, undercats) {
+                    const filteredUndercats = undercats.filter(undercat => undercat.category_id == selectedCategoryId);
+
+                    undercatsSelect.innerHTML = '';  // Очищаем текущий список подкатегорий
+
+                    filteredUndercats.forEach(undercat => {
+                        const option = document.createElement('option');
+                        option.value = undercat.id;
+                        option.textContent = undercat.name;
+                        if (item.undercats_data.some(u => u.id === undercat.id)) {
+                            option.selected = true;
+                        }
+                        undercatsSelect.appendChild(option);
+                    });
+                }
+
+                // Вызываем обновление списка подкатегорий сразу при рендеринге формы
+                updateUndercatsList(item.category_id, undercats);
+
+                // Обработчик отправки формы
+                const editForm = document.getElementById('edit-form');
+                editForm.addEventListener('submit', function (event) {
+                    event.preventDefault();  // Предотвращаем стандартную отправку формы
+
+                    // Собираем данные из формы
+                    const updatedData = {
+                        status_id: document.getElementById('status_id').value,
+                        type_id: document.getElementById('type_id').value,
+                        category_id: document.getElementById('category_id').value,
+                        undercats: Array.from(document.getElementById('undercats').selectedOptions).map(option => option.value),
+                        summ: document.getElementById('summ').value,
+                        comment: document.getElementById('comment').value
+                    };
+
+                    // Отправка PUT запроса для обновления данных на сервере
+                    const csrfToken = getCsrfToken();
+                    fetch(`http://{{ request.get_host }}/api/v1/cashflows/${id}/`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify(updatedData)
+                    })
+                    .then(response => response.json())
+                    .then(updatedItem => {
+                        // Обновляем данные на странице
+                        const index = cashflowsData.findIndex(item => item.id === id);
+                        cashflowsData[index] = updatedItem;
+                        renderTable(cashflowsData);  // Перерисовываем таблицу с обновленными данными
+                        alert('Запись успешно обновлена');
+                        cancelEdit();  // Закрываем форму редактирования
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при обновлении записи:', error);
+                        alert('Произошла ошибка при обновлении записи');
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Ошибка при получении данных для выпадающих списков:', error);
+                alert('Ошибка при загрузке данных для редактирования');
+            });
+        }
+
+        // Функция для закрытия формы редактирования
+        function cancelEdit() {
+            const editFormContainer = document.getElementById('edit-form-container');
+            if (editFormContainer) {
+                editFormContainer.remove();  // Удаляем форму редактирования из DOM
+            }
+        }
+
+        // Функция для получения CSRF токена из cookies PS. Предварительно нужно залогиниться!!!
+        function getCsrfToken() {
+            const csrfToken = document.cookie.split(';')
+                .find(cookie => cookie.trim().startsWith('csrftoken='))
+                .split('=')[1];
+            return csrfToken;
+        }
+
+        // Функция для отображения формы добавления
+        function showAddForm() {
+            // Проверка, существует ли уже форма, чтобы не добавлять ее несколько раз
+            if (document.getElementById('add-form-container')) {
+                return;  // Если форма уже существует, не добавляем новую
+            }
+
+            // Запрашиваем доступные статусы, типы, категории и подкатегории
+            Promise.all([
+                fetch('http://{{ request.get_host }}/api/v1/statuses/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/types/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/categories/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/undercats/').then(res => res.json())  // Список подкатегорий
+            ])
+            .then(([statuses, types, categories, undercats]) => {
+                // Создаем форму добавления
+                const addFormHtml = `
+                    <div id="add-form-container" class="container">
+                        <h2>Добавить запись</h2>
+                        <form id="add-cashflow-form">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Статус</label>
+                                <select class="form-select" id="status" required>
+                                    ${statuses.map(status => `
+                                        <option value="${status.id}">${status.name}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="type" class="form-label">Тип</label>
+                                <select class="form-select" id="type" required>
+                                    ${types.map(type => `
+                                        <option value="${type.id}">${type.name}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="category" class="form-label">Категория</label>
+                                <select class="form-select" id="category" required>
+                                    ${categories.map(category => `
+                                        <option value="${category.id}">${category.name}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="undercats" class="form-label">Подкатегории</label>
+                                <select class="form-select" id="undercats" multiple required></select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="summ" class="form-label">Сумма</label>
+                                <input type="number" class="form-control" id="summ" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="comment" class="form-label">Комментарий</label>
+                                <input type="text" class="form-control" id="comment" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Добавить запись</button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelAddForm()">Отмена</button>
+                        </form>
+                    </div>
+                `;
+
+                // Вставляем форму в DOM
+                document.body.innerHTML += addFormHtml;
+
+                // Получаем элементы для категории и подкатегорий
+                const categorySelect = document.getElementById('category');
+                const undercatsSelect = document.getElementById('undercats');
+
+                // Обработчик изменения категории
+                categorySelect.addEventListener('change', function() {
+                    const selectedCategoryId = categorySelect.value;
+                    updateUndercatsList(selectedCategoryId, undercats);  // Обновляем список подкатегорий
+                });
+
+                // Функция обновления списка подкатегорий
+                function updateUndercatsList(selectedCategoryId, undercats) {
+                    const filteredUndercats = undercats.filter(undercat => undercat.category_id == selectedCategoryId);
+
+                    undercatsSelect.innerHTML = '';  // Очищаем текущий список подкатегорий
+
+                    filteredUndercats.forEach(undercat => {
+                        const option = document.createElement('option');
+                        option.value = undercat.id;
+                        option.textContent = undercat.name;
+                        undercatsSelect.appendChild(option);
+                    });
+                }
+
+                // Загружаем подкатегории сразу после рендеринга формы
+                updateUndercatsList(categorySelect.value, undercats);
+
+                // Обработчик отправки формы
+                const addForm = document.getElementById('add-cashflow-form');
+                addForm.addEventListener('submit', function (event) {
+                    event.preventDefault();  // Предотвращаем стандартную отправку формы
+
+                    const formData = {
+                        status_id: document.getElementById('status').value,
+                        type_id: document.getElementById('type').value,
+                        category_id: document.getElementById('category').value,
+                        undercats: Array.from(document.getElementById('undercats').selectedOptions).map(option => option.value),
+                        summ: document.getElementById('summ').value,
+                        comment: document.getElementById('comment').value
+                    };
+
+                    // Отправка POST запроса для добавления данных
+                    const csrfToken = getCsrfToken();
+                    fetch('http://{{ request.get_host }}/api/v1/cashflows/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify(formData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert('Запись успешно добавлена');
+                        cashflowsData.push(data);  // Добавляем новую запись в данные
+                        renderTable(cashflowsData);  // Перерендериваем таблицу
+                        document.getElementById('add-cashflow-form').reset();  // Очищаем форму
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при добавлении записи:', error);
+                        alert('Произошла ошибка при добавлении записи');
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке данных для выпадающих списков:', error);
+                alert('Ошибка при загрузке данных для добавления записи');
+            });
+        }
+
+        // Функция для отмены добавления записи
+        function cancelAddForm() {
+            const addFormContainer = document.getElementById('add-form-container');
+            if (addFormContainer) {
+                addFormContainer.remove();  // Удаляем форму из DOM
+            }
+        }
+
+        // Функция удаления строки
+        function removeRow(id) {
+            // Подтверждение перед удалением
+            if (!confirm('Вы уверены, что хотите удалить эту запись?')) return;
+
+            // Получаем CSRF токен
+            const csrfToken = getCsrfToken();
+
+            // Отправка DELETE запроса на сервер
+            fetch(`http://{{ request.get_host }}/api/v1/cashflows/${id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken  // Добавляем CSRF токен в заголовки
+                }
+            })
+            .then(response => {
+                // Проверяем статус ответа: если код 204, считаем успешным
+                if (response.ok || response.status === 204) {
+                    alert('Запись успешно удалена');
+                    // Удаляем строку из данных
+                    cashflowsData = cashflowsData.filter(item => item.id !== id);
+                    renderTable(cashflowsData); // Рендерим обновленную таблицу
+                } else {
+                    throw new Error('Ошибка при удалении');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при удалении записи:', error);
+                alert('Произошла ошибка при удалении записи');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <title>Редактирование категорий, подкатегорий и типов</title>
+    <style>
+        .table-container {
+            max-height: 800px;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid #dee2e6;
+        }
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .form-container {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <div class="container text-center">
+        <div class="table-container">
+            <h2>Управление статусами</h2>
+            <a href="http://{{ request.get_host }}" class="btn btn-primary">На главную</a>
+            <button id="add-status-btn" class="btn btn-success" onclick="showForm('status')">Добавить статус</button>
+            <div id="status-form" class="form-container">
+                <h3 id="status-form-title">Добавить статус</h3>
+                <form id="status-form-content" onsubmit="handleFormSubmit(event, 'statuses')">
+                    <div class="mb-3">
+                        <label for="status-name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="status-name" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideForm('status')">Отмена</button>
+                </form>
+            </div>
+            <table id="status" class="table table-bordered mt-3">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="status-table-body"></tbody>
+            </table>
+        </div>
+
+        <div class="table-container">
+            <h2>Управление типами</h2>
+            <button id="add-type-btn" class="btn btn-success" onclick="showForm('type')">Добавить тип</button>
+            <div id="type-form" class="form-container">
+                <h3 id="type-form-title">Добавить тип</h3>
+                <form id="type-form-content" onsubmit="handleFormSubmit(event, 'types')">
+                    <div class="mb-3">
+                        <label for="type-name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="type-name" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideForm('type')">Отмена</button>
+                </form>
+            </div>
+            <table id="type-table" class="table table-bordered mt-3">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="type-table-body"></tbody>
+            </table>
+        </div>
+
+        <div class="table-container">
+            <h2>Управление категориями</h2>
+            <button id="add-category-btn" class="btn btn-success" onclick="showForm('category')">Добавить категорию</button>
+            <div id="category-form" class="form-container">
+                <h3 id="category-form-title">Добавить категорию</h3>
+                <form id="category-form-content" onsubmit="handleFormSubmit(event, 'categories')">
+                    <div class="mb-3">
+                        <label for="category-name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="category-name" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideForm('category')">Отмена</button>
+                </form>
+            </div>
+            <table id="category-table" class="table table-bordered mt-3">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="category-table-body"></tbody>
+            </table>
+        </div>
+        
+        <div class="table-container">
+            <h2>Управление подкатегориями</h2>
+            <button id="add-undercat-btn" class="btn btn-success" onclick="showForm('undercat')">Добавить подкатегорию</button>
+            <div id="undercat-form" class="form-container">
+                <h3 id="undercat-form-title">Добавить подкатегорию</h3>
+                <form id="undercat-form-content" onsubmit="handleFormSubmit(event, 'undercats')">
+                    <div class="mb-3">
+                        <label for="undercat-name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="undercat-name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="undercat-category" class="form-label">Категория</label>
+                        <select class="form-select" id="undercat-category" required>
+                            <option value="">Выберите категорию</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideForm('undercat')">Отмена</button>
+                </form>
+            </div>
+            <table id="undercat-table" class="table table-bordered mt-3">
+                <thead>
+                    <tr>
+                        <th>Категория</th>
+                        <th>Название</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="undercat-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let statuses = [];
+        let types = [];
+        let categories = [];
+        let undercats = [];
+        let editingEntity = null;
+
+        function getCsrfToken() {
+            const csrfToken = document.cookie.split(';')
+                .find(cookie => cookie.trim().startsWith('csrftoken='))
+                .split('=')[1];
+            return csrfToken;
+        }
+
+        function loadData() {
+            Promise.all([
+                fetch('http://{{ request.get_host }}/api/v1/statuses/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/types/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/categories/').then(res => res.json()),
+                fetch('http://{{ request.get_host }}/api/v1/undercats/').then(res => res.json())
+            ])
+            .then(([statusData, typeData, categoryData, undercatData]) => {
+                statuses = statusData;
+                types = typeData;
+                categories = categoryData;
+                undercats = undercatData;
+
+                renderStatusTable();
+                renderTypeTable();
+                renderCategoryTable();
+                renderUndercatTable();
+                populateCategorySelect();
+            });
+        }
+
+        function renderStatusTable() {
+            const statusTableBody = document.getElementById('status-table-body');
+            statusTableBody.innerHTML = '';
+            statuses.forEach(status => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${status.name}</td>
+                    <td>
+                        <button class="btn btn-primary" onclick="editStatus(${status.id})">Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteStatus(${status.id})">Удалить</button>
+                    </td>
+                `;
+                statusTableBody.appendChild(row);
+            });
+        }
+
+        function renderTypeTable() {
+            const typeTableBody = document.getElementById('type-table-body');
+            typeTableBody.innerHTML = '';
+            types.forEach(type => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${type.name}</td>
+                    <td>
+                        <button class="btn btn-primary" onclick="editType(${type.id})">Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteType(${type.id})">Удалить</button>
+                    </td>
+                `;
+                typeTableBody.appendChild(row);
+            });
+        }
+
+        function renderCategoryTable() {
+            const categoryTableBody = document.getElementById('category-table-body');
+            categoryTableBody.innerHTML = '';
+            categories.forEach(category => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${category.name}</td>
+                    <td>
+                        <button class="btn btn-primary" onclick="editCategory(${category.id})">Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteCategory(${category.id})">Удалить</button>
+                    </td>
+                `;
+                categoryTableBody.appendChild(row);
+            });
+        }
+
+        function renderUndercatTable() {
+            const undercatTableBody = document.getElementById('undercat-table-body');
+            undercatTableBody.innerHTML = '';
+            undercats.forEach(undercat => {
+                const category = categories.find(c => c.id === undercat.category_id);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${category ? category.name : 'Не найдено'}</td>
+                    <td>${undercat.name}</td>
+                    <td>
+                        <button class="btn btn-primary" onclick="editUndercat(${undercat.id})">Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteUndercat(${undercat.id})">Удалить</button>
+                    </td>
+                `;
+                undercatTableBody.appendChild(row);
+            });
+        }
+
+        function populateCategorySelect() {
+            const categorySelect = document.getElementById('undercat-category');
+            
+            // Очистить все предыдущие опции перед добавлением новых
+            categorySelect.innerHTML = '';
+
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categorySelect.appendChild(option);
+            });
+        }
+
+        function showForm(entityType) {
+            // Скрыть все формы перед открытием новой
+            hideAllForms();
+
+            const formContainer = document.getElementById(`${entityType}-form`);
+            const formTitle = document.getElementById(`${entityType}-form-title`);
+            const formContent = document.getElementById(`${entityType}-form-content`);
+
+            formContainer.style.display = 'block';
+            formTitle.textContent = `Добавить ${entityType}`;
+            formContent.reset();
+
+            editingEntity = null;
+        }
+
+        function hideForm(entityType) {
+            const formContainer = document.getElementById(`${entityType}-form`);
+            formContainer.style.display = 'none';  // Скрыть форму
+            editingEntity = null;  // Сбросить редактируемую сущность
+        }
+
+        function hideAllForms() {
+            const allForms = document.querySelectorAll('.form-container');
+            allForms.forEach(form => form.style.display = 'none');
+        }
+
+        function handleFormSubmit(event, entityType) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const name = form.querySelector('input').value;
+            const data = { name };
+
+            if(entityType === 'undercats'){
+                const categorySelect = form.querySelector('#undercat-category');
+                const categoryId = categorySelect ? categorySelect.value : null;
+
+                console.log('Выбранное значение категории:', categoryId);  // Для отладки
+                console.log('Доступные категории:', categories);  // Для отладки
+
+                if (!categoryId || categoryId === "") {
+                    alert('Не выбрана категория!');
+                    return;  // Прерываем выполнение функции, если категория не выбрана
+                }
+                data['category_id'] = categoryId;
+            }
+
+            const method = editingEntity ? 'PUT' : 'POST';
+            const url = editingEntity
+                ? `http://{{ request.get_host }}/api/v1/${entityType}/${editingEntity.id}/`
+                : `http://{{ request.get_host }}/api/v1/${entityType}/`;
+
+            console.log('Используемый URL:', url);
+            console.log('Данные, отправляемые в запросе:', JSON.stringify(data));
+
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            };
+
+            fetch(url, {
+                method,
+                headers,
+                body: JSON.stringify(data)
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(error => { throw new Error(error.message); });
+                }
+                return res.json();
+            })
+            .then(() => {
+                loadData();
+                hideForm(entityType);
+            })
+            .catch(err => {
+                console.error('Ошибка при отправке запроса:', err);
+            });
+        }
+
+
+
+        function editStatus(id) {
+            const status = statuses.find(s => s.id === id);
+            const form = document.getElementById('status-form-content');
+            form.querySelector('input').value = status.name;
+            showForm('status');
+            editingEntity = status;
+        }
+
+        function editStatus(id) {
+            const status = statuses.find(s => s.id === id);
+            const form = document.getElementById('status-form-content');
+            form.querySelector('input').value = status.name;
+            showForm('status');
+            editingEntity = status;
+            
+            // Изменить заголовок формы
+            const formTitle = document.getElementById('status-form-title');
+            formTitle.textContent = `Редактировать статус: ${status.name}`;
+        }
+
+        function editType(id) {
+            const type = types.find(t => t.id === id);
+            const form = document.getElementById('type-form-content');
+            form.querySelector('input').value = type.name;
+            showForm('type');
+            editingEntity = type;
+            
+            const formTitle = document.getElementById('type-form-title');
+            formTitle.textContent = `Редактировать тип: ${type.name}`;
+        }
+
+        function deleteType(id) {
+            if (confirm('Вы уверены, что хотите удалить этот тип?')) {
+                fetch(`http://{{ request.get_host }}/api/v1/types/${id}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(() => loadData())
+                .catch(console.error);
+            }
+        }
+
+        function editCategory(id) {
+            const category = categories.find(c => c.id === id);
+            const form = document.getElementById('category-form-content');
+            form.querySelector('input').value = category.name;
+            showForm('category');
+            editingEntity = category;
+            
+            const formTitle = document.getElementById('category-form-title');
+            formTitle.textContent = `Редактировать категорию: ${category.name}`;
+        }
+
+        function deleteCategory(id) {
+            if (confirm('Вы уверены, что хотите удалить эту категорию?')) {
+                fetch(`http://{{ request.get_host }}/api/v1/categories/${id}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(() => loadData())
+                .catch(console.error);
+            }
+        }
+
+        function editUndercat(id) {
+            const undercat = undercats.find(u => u.id === id);
+            const form = document.getElementById('undercat-form-content');
+            form.querySelector('input').value = undercat.name;
+            form.querySelector('select').value = undercat.category_id;
+            showForm('undercat');
+            editingEntity = undercat;
+            
+            const formTitle = document.getElementById('undercat-form-title');
+            formTitle.textContent = `Редактировать подкатегорию: ${undercat.name}`;
+        }
+
+        function deleteUndercat(id) {
+            if (confirm('Вы уверены, что хотите удалить эту подкатегорию?')) {
+                fetch(`http://{{ request.get_host }}/api/v1/undercats/${id}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(() => loadData())
+                .catch(console.error);
+            }
+        }
+
+        // Инициализация данных
+        loadData();
+    </script>
+</body>
+</html>
